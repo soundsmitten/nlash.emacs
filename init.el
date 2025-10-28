@@ -1,0 +1,145 @@
+;;; init.el --- minimal Emacs config -*- lexical-binding: t; -*-
+
+;; ----------------------------------------
+;; Package system
+;; ----------------------------------------
+(require 'package)
+(setq package-archives
+      '(("melpa" . "https://melpa.org/packages/")
+        ("gnu"   . "https://elpa.gnu.org/packages/")))
+(package-initialize)
+
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+
+(require 'use-package)
+(setq use-package-always-ensure t)
+
+;; ----------------------------------------
+;; UI
+;; ----------------------------------------
+(tool-bar-mode -1)
+(scroll-bar-mode -1)
+(setq inhibit-startup-screen nil) ;; keep splash screen
+(setq ring-bell-function 'ignore
+      visible-bell nil)
+
+;; ----------------------------------------
+;; Files & backups
+;; ----------------------------------------
+(setq make-backup-files nil
+      auto-save-default nil
+      create-lockfiles nil)
+
+;; ----------------------------------------
+;; Editing behavior
+;; ----------------------------------------
+(delete-selection-mode 1)
+(setq backward-delete-char-untabify-method 'hungry)
+
+;; ----------------------------------------
+;; Keybinds (general)
+;; ----------------------------------------
+(defun nl/open-init ()
+  "Open my Emacs init file."
+  (interactive)
+  (find-file "~/.config/emacs/init.el"))
+(global-set-key (kbd "C-c i") #'nl/open-init)
+
+;; ----------------------------------------
+;; Navigation / LSP keybindings
+;; ----------------------------------------
+(global-set-key (kbd "C-c d") #'xref-find-definitions)
+(global-set-key (kbd "C-c r") #'xref-find-references)
+(global-set-key (kbd "C-c b") #'xref-pop-marker-stack)
+(global-set-key (kbd "C-c n") #'eglot-rename)
+(global-set-key (kbd "C-c a") #'eglot-code-actions)
+(global-set-key (kbd "C-c f") #'eglot-format)
+
+;; ----------------------------------------
+;; Diagnostics navigation (Flymake)
+;; ----------------------------------------
+(global-set-key (kbd "C-c e n") #'flymake-goto-next-error)
+(global-set-key (kbd "C-c e p") #'flymake-goto-prev-error)
+(global-set-key (kbd "C-c e l") #'flymake-show-buffer-diagnostics)
+(global-set-key (kbd "C-c e L") #'flymake-show-project-diagnostics)
+
+;; ----------------------------------------
+;; Theme & fonts
+;; ----------------------------------------
+(use-package doom-themes
+  :config
+  (load-theme 'doom-tokyo-night t))
+
+(set-face-attribute 'default nil :family "Triplicate T4c" :height 160)
+(set-face-attribute 'mode-line nil :family "Concourse T3" :height 150)
+(set-face-attribute 'variable-pitch nil :family "Concourse T3" :height 160)
+(setq-default line-spacing 0.15)
+
+;; ----------------------------------------
+;; Recent files
+;; ----------------------------------------
+(use-package recentf
+  :init
+  (setq recentf-max-saved-items 200
+        recentf-max-menu-items 25
+        recentf-auto-cleanup 'never)
+  :config
+  (recentf-mode 1)
+  :bind ("C-c o" . recentf-open-files))
+
+;; ----------------------------------------
+;; Completion popup
+;; ----------------------------------------
+(use-package corfu
+  :init
+  (global-corfu-mode)
+  :custom
+  (corfu-auto t)
+  (corfu-auto-prefix 1)
+  (corfu-auto-delay 0.0)
+  (corfu-popupinfo-delay 0.3))
+
+(use-package nerd-icons-corfu :after corfu)
+
+;; ----------------------------------------
+;; Language support (Swift)
+;; ----------------------------------------
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(swift-mode . ("xcrun" "sourcekit-lsp"))))
+
+(use-package swift-mode
+  :hook (swift-mode . eglot-ensure))
+
+(defun nl/swift-eglot-format (orig-fn &rest args)
+  "Use SwiftFormat as Eglot's formatter for Swift buffers."
+  (if (eq major-mode 'swift-mode)
+      (let ((config "~/.config/nvim/nlash.swiftformat"))
+        (save-buffer)
+        (shell-command
+         (format "swiftformat --config %s %s"
+                 (shell-quote-argument (expand-file-name config))
+                 (shell-quote-argument (buffer-file-name))))
+        (revert-buffer :ignore-auto :noconfirm :preserve-modes))
+    (apply orig-fn args))) ;; fallback for other languages
+
+(advice-add 'eglot-format :around #'nl/swift-eglot-format)
+
+
+;; ----------------------------------------
+;; Custom (auto-generated)
+;; ----------------------------------------
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages nil))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
