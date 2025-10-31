@@ -16,6 +16,8 @@
 (require 'use-package)
 (setq use-package-always-ensure t)
 
+(server-start)
+
 ;; ----------------------------------------
 ;; UI
 ;; ----------------------------------------
@@ -24,6 +26,8 @@
 (setq inhibit-startup-screen nil) ;; keep splash screen
 (setq ring-bell-function 'ignore
       visible-bell nil)
+(setq display-line-numbers-type 'relative) ;; or 'absolute
+(global-display-line-numbers-mode 1)
 
 ;; ----------------------------------------
 ;; Files & backups
@@ -37,6 +41,18 @@
 ;; ----------------------------------------
 (delete-selection-mode 1)
 (setq backward-delete-char-untabify-method 'hungry)
+
+(use-package undo-fu
+  :ensure t)
+
+(use-package evil
+  :init
+  (setq evil-want-keybinding nil) ;; leave other modes alone
+  (setq evil-want-C-u-scroll t)
+  (setq evil-want-C-d-scroll t)
+  (setq evil-undo-system 'undo-fu)
+  :config
+  (evil-mode 1))
 
 ;; ----------------------------------------
 ;; Keybinds (general)
@@ -104,6 +120,52 @@
 (use-package nerd-icons-corfu :after corfu)
 
 ;; ----------------------------------------
+;; Completion UI (minibuffer) — Vertico
+;; ----------------------------------------
+(use-package vertico
+  :init
+  (vertico-mode 1))
+
+;; Better candidate sorting / grouping
+(use-package savehist
+  :init (savehist-mode 1))
+
+;; ----------------------------------------
+;; Fuzzy matching everywhere — Orderless
+;; ----------------------------------------
+(use-package orderless
+  :init
+  (setq completion-styles '(orderless)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles . (partial-completion))))))
+
+;; ----------------------------------------
+;; Navigation & project search — Consult
+;; ----------------------------------------
+(use-package consult
+  :bind
+  (("C-c b"       . consult-buffer)        ;; switch buffers / recent files
+   ("C-x C-f"   . consult-find)          ;; find files (better than default)
+   ("C-c s"     . consult-ripgrep)       ;; live grep (Telescope live_grep)
+   ("C-c l"     . consult-line)          ;; search in buffer
+   ("C-c b"     . consult-project-buffer) ;; show buffers for current project
+   ("M-y"       . consult-yank-pop)))     ;; clipboard history
+
+;; ----------------------------------------
+;; Projects
+;; ----------------------------------------
+(use-package project
+  :ensure nil ; built-in
+  :bind (("C-c p f" . project-find-file)
+         ("C-c p r" . project-find-regexp)
+         ("C-c p d" . project-dired)
+         ("C-c p s" . project-switch-project)))
+
+;; Make consult use ripgrep if available
+(setq consult-ripgrep-command
+      "rg --null --line-buffered --color=never --max-columns=1000 --no-heading --line-number --hidden .")
+
+;; ----------------------------------------
 ;; Language support (Swift)
 ;; ----------------------------------------
 (with-eval-after-load 'eglot
@@ -136,7 +198,9 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(package-selected-packages nil))
+ '(package-selected-packages
+   '(consult corfu doom-themes evil nerd-icons-corfu orderless swift-mode
+	     undo-fu vertico)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
