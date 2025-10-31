@@ -23,10 +23,10 @@
 ;; ----------------------------------------
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
-(setq inhibit-startup-screen nil) ;; keep splash screen
+(setq inhibit-startup-screen nil)
 (setq ring-bell-function 'ignore
       visible-bell nil)
-(setq display-line-numbers-type 'relative) ;; or 'absolute
+(setq display-line-numbers-type 'relative)
 (global-display-line-numbers-mode 1)
 
 ;; ----------------------------------------
@@ -42,51 +42,87 @@
 (delete-selection-mode 1)
 (setq backward-delete-char-untabify-method 'hungry)
 
-(use-package undo-fu
-  :ensure t)
+(use-package undo-fu)
 
+;; ----------------------------------------
+;; Evil + Evil-Collection
+;; ----------------------------------------
 (use-package evil
   :init
-  (setq evil-want-keybinding nil) ;; leave other modes alone
-  (setq evil-want-C-u-scroll t)
-  (setq evil-want-C-d-scroll t)
-  (setq evil-undo-system 'undo-fu)
+  (setq evil-want-keybinding nil
+        evil-want-C-u-scroll t
+        evil-want-C-d-scroll t
+        evil-undo-system 'undo-fu)
   :config
   (evil-mode 1))
 
-;; ----------------------------------------
-;; Keybinds (general)
-;; ----------------------------------------
-(defun nl/open-init ()
-  "Open my Emacs init file."
-  (interactive)
-  (find-file "~/.config/emacs/init.el"))
-(global-set-key (kbd "C-c i") #'nl/open-init)
+(use-package evil-collection
+  :after evil
+  :config (evil-collection-init))
 
 ;; ----------------------------------------
-;; Navigation / LSP keybindings
+;; Which-Key
 ;; ----------------------------------------
-(global-set-key (kbd "C-c d") #'xref-find-definitions)
-(global-set-key (kbd "C-c r") #'xref-find-references)
-(global-set-key (kbd "C-c b") #'xref-pop-marker-stack)
-(global-set-key (kbd "C-c n") #'eglot-rename)
-(global-set-key (kbd "C-c a") #'eglot-code-actions)
-(global-set-key (kbd "C-c f") #'eglot-format)
+(use-package which-key
+  :init (which-key-mode)
+  :custom (which-key-idle-delay 0.3))
 
 ;; ----------------------------------------
-;; Diagnostics navigation (Flymake)
+;; General + Leader
 ;; ----------------------------------------
-(global-set-key (kbd "C-c e n") #'flymake-goto-next-error)
-(global-set-key (kbd "C-c e p") #'flymake-goto-prev-error)
-(global-set-key (kbd "C-c e l") #'flymake-show-buffer-diagnostics)
-(global-set-key (kbd "C-c e L") #'flymake-show-project-diagnostics)
+(use-package general
+  :config
+  (general-evil-setup t))
+
+(general-create-definer nl/leader
+  :states '(normal visual motion)
+  :keymaps 'override
+  :prefix "SPC")
 
 ;; ----------------------------------------
-;; Theme & fonts
+;; Split/Join 
+;; ----------------------------------------
+(use-package splitjoin
+  :ensure t
+  :config
+  ;; Evil binding: gS toggles split/join
+  (with-eval-after-load 'evil
+    (define-key evil-normal-state-map (kbd "gS") #'splitjoin-toggle)))
+
+;; ----------------------------------------
+;; Leader Mappings
+;; ----------------------------------------
+(nl/leader
+  ;; search / find / grep
+  "s" '(:ignore t :which-key "search")
+  "s f" #'project-find-file
+  "s g" #'consult-ripgrep
+
+  ;; formatting
+  "f" '(:ignore t :which-key "format")
+  "f f" #'eglot-format
+
+  ;; code actions / lsp
+  "c" '(:ignore t :which-key "code")
+  "c a" #'eglot-code-actions
+
+  ;; goto
+  "g" '(:ignore t :which-key "goto")
+  "g d" #'xref-find-definitions
+  "g r" #'xref-find-references
+
+  ;; diagnostics / Trouble-style
+  "t" '(:ignore t :which-key "tools")
+  "t t" #'consult-flymake)
+
+;; Quick open init
+(global-set-key (kbd "C-c i") (lambda () (interactive) (find-file "~/.config/emacs/init.el")))
+
+;; ----------------------------------------
+;; Theme & Fonts
 ;; ----------------------------------------
 (use-package doom-themes
-  :config
-  (load-theme 'doom-tokyo-night t))
+  :config (load-theme 'doom-tokyo-night t))
 
 (set-face-attribute 'default nil :family "Triplicate T4c" :height 160)
 (set-face-attribute 'mode-line nil :family "Concourse T3" :height 150)
@@ -94,116 +130,98 @@
 (setq-default line-spacing 0.15)
 
 ;; ----------------------------------------
-;; Recent files
+;; Recent Files
 ;; ----------------------------------------
 (use-package recentf
-  :init
-  (setq recentf-max-saved-items 200
-        recentf-max-menu-items 25
-        recentf-auto-cleanup 'never)
-  :config
-  (recentf-mode 1)
+  :config (recentf-mode 1)
   :bind ("C-c o" . recentf-open-files))
 
 ;; ----------------------------------------
-;; Completion popup
+;; Completion Popup — Corfu
 ;; ----------------------------------------
 (use-package corfu
-  :init
-  (global-corfu-mode)
+  :init (global-corfu-mode)
   :custom
   (corfu-auto t)
   (corfu-auto-prefix 1)
-  (corfu-auto-delay 0.0)
-  (corfu-popupinfo-delay 0.3))
+  (corfu-auto-delay 0.0))
 
 (use-package nerd-icons-corfu :after corfu)
 
-;; ----------------------------------------
-;; Completion UI (minibuffer) — Vertico
-;; ----------------------------------------
-(use-package vertico
-  :init
-  (vertico-mode 1))
-
-;; Better candidate sorting / grouping
-(use-package savehist
-  :init (savehist-mode 1))
+(with-eval-after-load 'corfu
+  (define-key corfu-map (kbd "RET") nil)
+  (define-key corfu-map (kbd "<return>") nil)
+  (define-key corfu-map (kbd "C-y") #'corfu-insert)
+  (define-key corfu-map (kbd "TAB") nil)
+  (define-key corfu-map (kbd "<tab>") nil))
 
 ;; ----------------------------------------
-;; Fuzzy matching everywhere — Orderless
+;; Vertico + Orderless + Consult
 ;; ----------------------------------------
+(use-package vertico :init (vertico-mode 1))
+(use-package savehist :init (savehist-mode 1))
 (use-package orderless
-  :init
-  (setq completion-styles '(orderless)
-        completion-category-defaults nil
-        completion-category-overrides '((file (styles . (partial-completion))))))
+  :init (setq completion-styles '(orderless)))
+(use-package consult)
 
 ;; ----------------------------------------
-;; Navigation & project search — Consult
-;; ----------------------------------------
-(use-package consult
-  :bind
-  (("C-c b"       . consult-buffer)        ;; switch buffers / recent files
-   ("C-x C-f"   . consult-find)          ;; find files (better than default)
-   ("C-c s"     . consult-ripgrep)       ;; live grep (Telescope live_grep)
-   ("C-c l"     . consult-line)          ;; search in buffer
-   ("C-c b"     . consult-project-buffer) ;; show buffers for current project
-   ("M-y"       . consult-yank-pop)))     ;; clipboard history
-
-;; ----------------------------------------
-;; Projects
+;; Project
 ;; ----------------------------------------
 (use-package project
-  :ensure nil ; built-in
-  :bind (("C-c p f" . project-find-file)
-         ("C-c p r" . project-find-regexp)
-         ("C-c p d" . project-dired)
-         ("C-c p s" . project-switch-project)))
-
-;; Make consult use ripgrep if available
-(setq consult-ripgrep-command
-      "rg --null --line-buffered --color=never --max-columns=1000 --no-heading --line-number --hidden .")
+  :ensure nil)
 
 ;; ----------------------------------------
-;; Language support (Swift)
+;; SwiftFormat: full buffer or region if active
 ;; ----------------------------------------
+
+(defun nl/swiftformat--full-buffer ()
+  "Format entire Swift buffer using SwiftFormat."
+  (let ((config "~/.config/nvim/nlash.swiftformat"))
+    (save-buffer)
+    (call-process "swiftformat" nil nil nil
+                  (format "--config=%s" (expand-file-name config))
+                  (buffer-file-name))
+    (revert-buffer :ignore-auto :noconfirm :preserve-modes)))
+
+(defun nl/swiftformat--region (start end)
+  "Format only the selected region using SwiftFormat --range."
+  (let* ((config "~/.config/nvim/nlash.swiftformat"))
+    (save-buffer)
+    (call-process "swiftformat" nil nil nil
+                  (format "--config=%s" (expand-file-name config))
+                  (format "--range=%d-%d"
+                          (line-number-at-pos start)
+                          (line-number-at-pos end))
+                  (buffer-file-name))
+    (revert-buffer :ignore-auto :noconfirm :preserve-modes)))
+
+(defun nl/swiftformat-smart ()
+  "Format region if active, otherwise the entire buffer."
+  (interactive)
+  (if (use-region-p)
+      (nl/swiftformat--region (region-beginning) (region-end))
+    (nl/swiftformat--full-buffer)))
+
+;; Make Eglot use the smart formatter for Swift
+(defun nl/swift-eglot-format-advice (orig-fn &rest args)
+  (if (derived-mode-p 'swift-ts-mode)
+      (nl/swiftformat-smart)
+    (apply orig-fn args)))
+
+(advice-add 'eglot-format :around #'nl/swift-eglot-format-advice)
+
+;; ----------------------------------------
+;; Swift + Eglot
+;; ----------------------------------------
+(use-package swift-mode
+  :hook (swift-mode . eglot-ensure))
+
 (with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
                '(swift-mode . ("xcrun" "sourcekit-lsp"))))
 
-(use-package swift-mode
-  :hook (swift-mode . eglot-ensure))
-
-(defun nl/swift-eglot-format (orig-fn &rest args)
-  "Use SwiftFormat as Eglot's formatter for Swift buffers."
-  (if (eq major-mode 'swift-mode)
-      (let ((config "~/.config/nvim/nlash.swiftformat"))
-        (save-buffer)
-        (shell-command
-         (format "swiftformat --config %s %s"
-                 (shell-quote-argument (expand-file-name config))
-                 (shell-quote-argument (buffer-file-name))))
-        (revert-buffer :ignore-auto :noconfirm :preserve-modes))
-    (apply orig-fn args))) ;; fallback for other languages
-
-(advice-add 'eglot-format :around #'nl/swift-eglot-format)
-
-
 ;; ----------------------------------------
-;; Custom (auto-generated)
+;; Custom
 ;; ----------------------------------------
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(consult corfu doom-themes evil nerd-icons-corfu orderless swift-mode
-	     undo-fu vertico)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+(custom-set-variables '(package-selected-packages nil))
+(custom-set-faces)
