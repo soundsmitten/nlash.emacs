@@ -82,12 +82,12 @@
 ;; ----------------------------------------
 ;; Split/Join 
 ;; ----------------------------------------
-(use-package splitjoin
-  :ensure t
-  :config
-  ;; Evil binding: gS toggles split/join
-  (with-eval-after-load 'evil
-    (define-key evil-normal-state-map (kbd "gS") #'splitjoin-toggle)))
+;; (use-package splitjoin
+;;   :ensure t
+;;   :config
+;;   ;; Evil binding: gS toggles split/join
+;;   (with-eval-after-load 'evil
+;;     (define-key evil-normal-state-map (kbd "gS") #'splitjoin-toggle)))
 
 ;; ----------------------------------------
 ;; Leader Mappings
@@ -97,6 +97,7 @@
   "s" '(:ignore t :which-key "search")
   "s f" #'project-find-file
   "s g" #'consult-ripgrep
+  "s p" #'project-switch-project
 
   ;; formatting
   "f" '(:ignore t :which-key "format")
@@ -211,17 +212,57 @@
 (advice-add 'eglot-format :around #'nl/swift-eglot-format-advice)
 
 ;; ----------------------------------------
-;; Swift + Eglot
+;; Swift + Tree-sitter + Eglot
 ;; ----------------------------------------
-(use-package swift-mode
-  :hook (swift-mode . eglot-ensure))
+
+;; Keep swift-mode installed for indentation + syntax tables,
+;; but don't use it as the major mode.
+;; (use-package swift-mode)
+
+(setq major-mode-remap-alist
+      '((swift-mode . swift-ts-mode)))
+
+(setq treesit-font-lock-level 4)
+
+(add-hook 'swift-ts-mode-hook #'eglot-ensure)
 
 (with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
-               '(swift-mode . ("xcrun" "sourcekit-lsp"))))
+               '(swift-ts-mode . ("xcrun" "sourcekit-lsp"))))
 
+;; Ensure Emacs knows your Swift grammar location:
+;; (setq treesit-extra-load-path '("~/.config/emacs/tree-sitter"))
+;; (setq major-mode-remap-alist
+;;       '((swift-mode . swift-ts-mode)))
+;; ;; Use tree-sitter major mode for .swift files
+;; (add-to-list 'auto-mode-alist '("\\.swift\\'" . swift-ts-mode))
+
+;; Start tree-sitter when entering Swift files
+;; (add-hook 'swift-ts-mode-hook #'treesit-parser-create)
+;; (add-hook 'swift-ts-mode-hook #'eglot-ensure)
+
+;; Tell Eglot to use sourcekit-lsp for swift-ts-mode
+(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '(swift-ts-mode . ("xcrun" "sourcekit-lsp"))))
+(setq treesit-font-lock-level 4)
+;; (use-package treesit-auto
+;;   :custom
+;;   (treesit-auto-install 'prompt)
+;;   :config
+;;   (treesit-auto-apply-remap))
 ;; ----------------------------------------
 ;; Custom
 ;; ----------------------------------------
-(custom-set-variables '(package-selected-packages nil))
-(custom-set-faces)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages nil))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
