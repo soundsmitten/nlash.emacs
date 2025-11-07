@@ -219,6 +219,9 @@
 ;; but don't use it as the major mode.
 ;; (use-package swift-mode)
 
+(use-package swift-ts-mode
+  :ensure t)
+
 (setq major-mode-remap-alist
       '((swift-mode . swift-ts-mode)))
 
