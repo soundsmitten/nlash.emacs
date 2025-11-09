@@ -1,5 +1,4 @@
 ;;; init.el --- minimal Emacs config -*- lexical-binding: t; -*-
-
 ;; ----------------------------------------
 ;; Package system
 ;; ----------------------------------------
@@ -82,12 +81,10 @@
 ;; ----------------------------------------
 ;; Split/Join 
 ;; ----------------------------------------
-;; (use-package splitjoin
-;;   :ensure t
-;;   :config
-;;   ;; Evil binding: gS toggles split/join
-;;   (with-eval-after-load 'evil
-;;     (define-key evil-normal-state-map (kbd "gS") #'splitjoin-toggle)))
+(add-to-list 'load-path (expand-file-name "lisp" user-emacs-directory))
+(require 'swift-split-join)
+  (add-hook 'swift-ts-mode-hook
+            (lambda () (evil-local-set-key 'normal (kbd "g S") #'swift-split-join)))
 
 ;; ----------------------------------------
 ;; Leader Mappings
