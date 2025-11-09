@@ -1,51 +1,69 @@
 ;; -*- lexical-binding: t -*-
 
 (defun swift-sj--bounds ()
-  "Return (START . END) of the nearest parentheses list around point.
-Handles being directly on or just after `(`."
+  "Return (START . END) of nearest (), [] or {} list around point.
+Works when point is on the opener, just after it, inside, or on closer."
   (save-excursion
-    (let (start end)
+    (let (start end opener closer)
 
-      ;; If on `(`, use that as the opener.
-      (when (eq (char-after) ?\()
-        (setq start (point))
+      ;; Detect opener at point
+      (cond
+       ((eq (char-after) ?\() (setq opener ?\( closer ?\)))
+       ((eq (char-after) ?\[) (setq opener ?\[ closer ?\]))
+       ((eq (char-after) ?\{) (setq opener ?\{ closer ?\})))
+
+      ;; Detect opener just before point
+      (cond
+       ((and (not opener) (eq (char-before) ?\() ) (setq opener ?\( closer ?\)))
+       ((and (not opener) (eq (char-before) ?\[) ) (setq opener ?\[ closer ?\]))
+       ((and (not opener) (eq (char-before) ?\{) ) (setq opener ?\{ closer ?\})))
+
+      ;; Case 1: Found opener explicitly
+      (when opener
+        (setq start (if (eq (char-after) opener)
+                        (point)
+                      (1- (point))))
         (setq end (ignore-errors (scan-lists start 1 0))))
 
-      ;; If no end yet and cursor just after '('
-      (unless end
-        (when (eq (char-before) ?\()
-          (setq start (1- (point)))
-          (setq end (ignore-errors (scan-lists start 1 0)))) )
-
-      ;; If still no match, assume cursor is inside list.
+      ;; Case 2: Otherwise, cursor is inside – climb up one list
       (unless end
         (ignore-errors (backward-up-list 1))
         (setq start (point))
         (setq end (ignore-errors (scan-lists start 1 0))))
 
       (unless (and start end)
-        (user-error "No surrounding parentheses list found"))
+        (user-error "No surrounding list found"))
 
       (cons start end))))
 
 (defun swift-sj--items (start end)
-  "Return list of trimmed items split on commas between START and END."
+  "Return list of items separated by commas between START and END,
+for (), [] or {}."
   (let* ((text (buffer-substring-no-properties start end))
-         (inner (string-trim (substring text 1 -1))) ;; drop parens
+         (open (substring text 0 1))
+         (close (substring text -1))
+         ;; Determine inner start/end based on delimiter type
+         (inner (string-trim
+                 (substring text 1 (1- (length text)))))
          (parts (split-string inner ",[ \n]*")))
     parts))
 
 (defun swift-split-join ()
-  "Toggle splitting/joining of a Swift parenthesis list."
+  "Toggle splitting/joining of a Swift parenthesis/bracket/brace list."
   (interactive)
   (let* ((bounds (swift-sj--bounds))
          (start (car bounds))
          (end   (cdr bounds))
          (items (swift-sj--items start end))
-         (multi (string-match-p "\n" (buffer-substring-no-properties start end)))
+         (text (buffer-substring-no-properties start end))
+         (open (substring text 0 1))
+         (close (substring text -1))
+         (multi (string-match-p "\n" text))
          (replacement (if multi
-                          (concat "(" (string-join items ", ") ")")
-                        (concat "(\n  " (string-join items ",\n  ") "\n)"))))
+                          (concat open (string-join items ", ") close)
+                        (concat open "\n  "
+                                (string-join items ",\n  ")
+                                "\n" close))))
     (save-excursion
       (delete-region start end)
       (insert replacement)
